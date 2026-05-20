@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 
 import { strings } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import { confirmAlert } from '@/lib/alert';
 import { useHousehold } from '@/hooks/useHousehold';
 
 export default function SettingsScreen() {
@@ -21,17 +22,16 @@ export default function SettingsScreen() {
   }
 
   function signOut() {
-    Alert.alert(strings.settings.signOutConfirm, '', [
-      { text: strings.common.cancel, style: 'cancel' },
-      {
-        text: strings.settings.signOut,
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          router.replace('/');
-        },
+    confirmAlert({
+      title: strings.settings.signOutConfirm,
+      confirmLabel: strings.settings.signOut,
+      cancelLabel: strings.common.cancel,
+      destructive: true,
+      onConfirm: async () => {
+        await supabase.auth.signOut();
+        router.replace('/');
       },
-    ]);
+    });
   }
 
   return (

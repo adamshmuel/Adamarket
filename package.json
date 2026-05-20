@@ -9,7 +9,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build:web": "expo export -p web"
+    "build:web": "expo export -p web",
+    "test:e2e": "playwright test --headed --workers=1",
+    "test:e2e:local": "TEST_URL=http://localhost:8082 playwright test --headed --workers=1",
+    "test:e2e:vercel": "TEST_URL=https://adamarket.vercel.app playwright test --headed --workers=1"
   },
   "dependencies": {
     "@expo-google-fonts/heebo": "^0.4.2",
@@ -48,6 +51,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@playwright/test": "^1.60.0",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",

@@ -6,13 +6,13 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { strings } from '@/lib/i18n';
+import { notifyAlert } from '@/lib/alert';
 import { useHousehold } from '@/hooks/useHousehold';
 
 type Mode = 'choose' | 'create' | 'join';
@@ -31,7 +31,7 @@ export default function JoinHouseholdScreen() {
       await createHousehold(name.trim());
       router.replace('/(app)');
     } catch (e) {
-      Alert.alert(strings.common.error, String((e as Error).message ?? e));
+      notifyAlert(strings.common.error, String((e as Error).message ?? e));
     } finally {
       setBusy(false);
     }
@@ -45,7 +45,7 @@ export default function JoinHouseholdScreen() {
       await joinHousehold(trimmed);
       router.replace('/(app)');
     } catch {
-      Alert.alert(strings.common.error, strings.household.errorBadCode);
+      notifyAlert(strings.common.error, strings.household.errorBadCode);
     } finally {
       setBusy(false);
     }

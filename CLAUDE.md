@@ -56,7 +56,7 @@ The full ruleset lives in [`.claude/skills/react-native-hebrew-rtl/SKILL.md`](.c
 
 | Skill | When to invoke |
 |---|---|
-| **`qa-testing`** | **After EVERY fix or feature** — scoped test + full regression. Never hand back without running this. |
+| **`qa-testing`** | **After EVERY fix or feature** — two-layer test: local preview (`preview_*` tools) + Playwright against live URL (`npm run test:e2e:vercel`). Strict visibility rule: never headless, never backgrounded. |
 | `react-native-hebrew-rtl` | **Any** UI or layout work — RN-specific RTL rules, BiDi recipes, pre-merge checklist. |
 | `hebrew-content-writer` | Drafting / editing Hebrew copy (button labels, errors, empty states). |
 | `hebrew-rtl-best-practices` | Web RTL reference — useful for typography, bidi marks, font choices. Not RN-specific. |
@@ -85,7 +85,30 @@ The full ruleset lives in [`.claude/skills/react-native-hebrew-rtl/SKILL.md`](.c
 
 ---
 
-## QA process — how Claude tests
+## QA — two-layer testing
+
+After every fix or feature, Claude runs BOTH layers. Never say "it should work" without proof.
+
+### Layer 1 — Local preview (`localhost:8082`)
+Fast iteration. Uses the `preview_*` tools. Catches functional bugs early.
+
+### Layer 2 — Playwright against live URL (`https://adamarket.vercel.app/`)
+Mandatory after every Vercel deploy. Catches Vercel-specific issues that don't exist on localhost:
+- Env vars not set / not baked into the bundle
+- Build cache serving stale code
+- CDN behaviour, real production CORS / cookies
+- Accessibility regressions (`@axe-core/playwright`)
+
+Commands (all forced `--headed --workers=1` — single visible Chromium, serial):
+```bash
+npm run test:e2e:local    # against localhost:8082
+npm run test:e2e:vercel   # against https://adamarket.vercel.app — after every deploy
+npm run test:e2e          # defaults to local
+```
+
+Specs live in `tests/e2e/`: `auth`, `list`, `scan`, `a11y`. Screenshots land in `test-results/<spec>/*.png`. The QA skill (`.claude/skills/qa-testing/SKILL.md`) documents the full protocol including the **visibility rule** (no headless, no background, no exceptions).
+
+## QA process — preview-pane details
 
 Claude acts as both developer and QA. After every fix, a **visible test cycle** must be completed in the preview pane (port 8082) before handing back. Never say "it should work."
 

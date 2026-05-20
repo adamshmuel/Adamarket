@@ -11,6 +11,87 @@ compatibility: Claude Code only. Adamarket project (Expo + Supabase). Preview pa
 
 # QA Testing Skill — Adamarket
 
+## ⚠️ Visibility rule — non-negotiable
+
+Every test must be visible to Adam. Claude MUST NOT:
+
+- Run Playwright with `--headed=false`, headless mode, or any flag that omits `--headed`
+- Use `run_in_background: true` for any test command
+- Pipe test output to a log file Adam can't see
+- Use `&` to background test processes
+- Use `Monitor` or any other "fire and forget" pattern for tests
+
+Tests run in **two visible ways**:
+
+1. **Claude runs them via `Bash` (foreground)** — Bash output streams into chat; screenshots are captured to `test-results/<spec>/*.png` and read back inline via the `Read` tool. The browser window itself is invisible to Adam in this mode (Bash runs in a hidden sandbox), but every meaningful state has a screenshot shown in chat.
+2. **Adam runs them himself in his terminal** — `npm run test:e2e` opens a real headed Chromium window that walks through the flow live. Use this when the screenshot trail alone isn't enough, or when Adam asks to watch.
+
+If a Playwright test must run, it runs FOREGROUND with `screenshot: 'on'`. No exceptions.
+
+---
+
+## Two-layer QA
+
+Every fix or feature requires BOTH layers:
+
+| Layer | Tool | Catches | Speed |
+|-------|------|---------|-------|
+| **1. Local preview** (`localhost:8082`) | `preview_*` tools | Functional bugs, UI bugs, optimistic-update timing | Fast (seconds) |
+| **2. Live URL** (`https://adamarket.vercel.app/`) | Playwright + axe-core | Env-var bugs, build-cache issues, CDN behaviour, real CORS, accessibility regressions | Slower (~1 min per spec) |
+
+Run Layer 1 during iteration. Run Layer 2 after every Vercel deploy.
+
+### Live-URL commands
+
+```bash
+npm run test:e2e:local    # Playwright against localhost:8082 — single visible Chromium
+npm run test:e2e:vercel   # Playwright against adamarket.vercel.app — production smoke
+npm run test:e2e          # defaults to local
+```
+
+All three force `--headed --workers=1` — visibility rule.
+
+### What the Playwright specs cover
+
+| Spec | Asserts |
+|---|---|
+| `tests/e2e/auth.spec.ts` | Sign-in form loads with Hebrew copy, fill+submit reaches list screen |
+| `tests/e2e/list.spec.ts` | Add → check → uncheck → delete (optimistic updates) |
+| `tests/e2e/scan.spec.ts` | Tab → scan → gallery upload (`fridge.jpg`) → OCR review → confirm → items in list |
+| `tests/e2e/a11y.spec.ts` | `@axe-core/playwright` on sign-in, list, scan, settings — zero serious/critical |
+
+### Canonical test image — `tests/fixtures/fridge.jpg`
+
+**Always use this image for OCR tests. Never substitute a different file in test code.**
+
+- Path: `tests/fixtures/fridge.jpg` (committed to the repo — single source of truth)
+- Format: JPEG, 960×1280
+- Content: real handwritten Hebrew grocery list photographed on a fridge
+- Expected OCR extraction (5 items): **חלב, לחמניות, מוצרלה, טונה, ביצים**
+- Used by: `tests/e2e/scan.spec.ts` (imported via `path.resolve(__dirname, '..', 'fixtures', 'fridge.jpg')`)
+
+If Adam supplies a new test image (better lighting, harder handwriting, more items, etc.):
+1. Overwrite `tests/fixtures/fridge.jpg` with the new file (same filename — keep the path stable)
+2. Update the "Expected OCR extraction" list above to match what the model returns from the new image
+3. Re-run `npm run test:e2e:vercel` to confirm the spec still passes
+4. Commit both the new image and the updated SKILL.md together
+
+**Do not** add a second fixture file or hardcode a different path in any spec. The single fixture is the contract — change the file, not the references.
+
+### Reading screenshots back
+
+After a Bash run finishes, screenshots live at:
+```
+test-results/auth/01-initial-load.png
+test-results/list/02-added.png
+test-results/scan/02-review-screen.png
+test-results/a11y/03-scan.png
+…
+```
+Use the `Read` tool on each path to embed it in chat. Never describe a result without showing the screenshot.
+
+---
+
 ## When to invoke
 
 **Mandatory** after every:
