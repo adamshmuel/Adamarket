@@ -1,8 +1,15 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { strings } from '@/lib/i18n';
 
 export default function AppLayout() {
+  // iOS Safari (and PWA "Add to Home Screen") sits the tab bar inside the
+  // Home-Indicator safe area, cutting off labels. Pad the bar by the bottom
+  // inset so labels clear the indicator. No-ops to 0 on platforms without an
+  // inset (Android, desktop web).
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -13,6 +20,9 @@ export default function AppLayout() {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#F0EBE4',
           borderTopWidth: 1,
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 6,
         },
         tabBarLabelStyle: { fontFamily: 'Heebo_500Medium', fontSize: 11 },
       }}
