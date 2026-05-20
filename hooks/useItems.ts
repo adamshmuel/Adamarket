@@ -88,6 +88,20 @@ export function useItems(householdId: string | null) {
       if (!householdId) return;
       const trimmed = name.trim();
       if (!trimmed) return;
+      const normalized = normalizeHebrew(trimmed);
+
+      // Dedup: if an UNCHECKED item with the same normalised name already
+      // exists, treat the add as a no-op. The user already has it on the list.
+      // Checked (purchased) items don't block a new add — that's the user
+      // intentionally re-adding something they bought before.
+      const existing = itemsRef.current.find(
+        (it) => it.name_normalized === normalized && !it.checked,
+      );
+      if (existing) {
+        console.log('[addItem] duplicate skipped:', trimmed);
+        return { skipped: true as const, existing };
+      }
+
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
@@ -97,7 +111,7 @@ export function useItems(householdId: string | null) {
         id: tempId,
         household_id: householdId,
         name: trimmed,
-        name_normalized: normalizeHebrew(trimmed),
+        name_normalized: normalized,
         quantity: quantity?.trim() || null,
         checked: false,
         checked_at: null,
@@ -111,7 +125,7 @@ export function useItems(householdId: string | null) {
         .insert({
           household_id: householdId,
           name: trimmed,
-          name_normalized: normalizeHebrew(trimmed),
+          name_normalized: normalized,
           quantity: quantity?.trim() || null,
           created_by: user.user.id,
         })
@@ -139,6 +153,14 @@ export function useItems(householdId: string | null) {
       if (!householdId) return;
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
+
+      // Existing UNCHECKED items block re-adds. Checked items (purchased) don't.
+      const existingUnchecked = new Set(
+        itemsRef.current.filter((it) => !it.checked).map((it) => it.name_normalized),
+      );
+      const seenInBatch = new Set<string>();
+      const skipped: string[] = [];
+
       const payload = rows
         .map((r) => ({
           household_id: householdId,
@@ -147,8 +169,27 @@ export function useItems(householdId: string | null) {
           quantity: r.quantity?.trim() || null,
           created_by: user.user!.id,
         }))
-        .filter((r) => r.name.length > 0);
-      if (!payload.length) return;
+        .filter((r) => {
+          if (!r.name.length) return false;
+          // Skip duplicates of items already on the list
+          if (existingUnchecked.has(r.name_normalized)) {
+            skipped.push(r.name);
+            return false;
+          }
+          // Skip duplicates within this same batch (OCR may extract the same
+          // word twice from a noisy photo)
+          if (seenInBatch.has(r.name_normalized)) {
+            skipped.push(r.name);
+            return false;
+          }
+          seenInBatch.add(r.name_normalized);
+          return true;
+        });
+
+      if (skipped.length) {
+        console.log(`[addItems] skipped ${skipped.length} duplicate(s):`, skipped);
+      }
+      if (!payload.length) return { skippedCount: skipped.length };
 
       // Optimistic update — all confirmed items appear instantly.
       const now = new Date().toISOString();

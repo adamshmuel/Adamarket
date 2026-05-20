@@ -47,5 +47,20 @@ html = html.replace(/<html\b([^>]*)>/i, (match, attrs) => {
   return `<html${next}>`;
 });
 
+// 4. Inject a stylesheet that uses the dynamic-viewport unit (100dvh) for the
+//    app shell. iOS Safari's `env(safe-area-inset-bottom)` accounts only for
+//    the Home Indicator — NOT the floating bottom toolbar. Using 100vh leaves
+//    the page rendering UNDER the toolbar, hiding the bottom tab bar's labels.
+//    100dvh shrinks the page when the toolbar is shown, so the tab bar always
+//    sits visibly above whatever browser chrome is currently rendered.
+const styleTag = `
+    <style>
+      html, body { height: 100dvh; overflow: hidden; margin: 0; }
+      body > div[id="root"] { height: 100dvh; }
+    </style>`;
+if (!html.includes('height: 100dvh')) {
+  html = html.replace('</head>', `${styleTag}\n  </head>`);
+}
+
 fs.writeFileSync(HTML_PATH, html);
-console.log('patch-web-html: dist/index.html patched (viewport-fit=cover + PWA meta + RTL).');
+console.log('patch-web-html: dist/index.html patched (viewport-fit=cover + PWA meta + RTL + 100dvh).');
