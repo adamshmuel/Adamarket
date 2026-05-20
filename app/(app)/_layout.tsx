@@ -6,9 +6,10 @@ import { strings } from '@/lib/i18n';
 export default function AppLayout() {
   // iOS Safari (and PWA "Add to Home Screen") sits the tab bar inside the
   // Home-Indicator safe area, cutting off labels. Pad the bar by the bottom
-  // inset so labels clear the indicator. No-ops to 0 on platforms without an
-  // inset (Android, desktop web).
+  // inset so labels clear the indicator. Falls back to a small floor of 8px
+  // when the inset is 0 (Android, desktop web) so there's still breathing room.
   const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 8);
 
   return (
     <Tabs
@@ -20,11 +21,11 @@ export default function AppLayout() {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#F0EBE4',
           borderTopWidth: 1,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
+          height: 56 + bottomPad,
+          paddingBottom: bottomPad,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontFamily: 'Heebo_500Medium', fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: 'Heebo_500Medium', fontSize: 11, marginTop: 2 },
       }}
     >
       <Tabs.Screen
